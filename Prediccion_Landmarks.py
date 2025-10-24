@@ -62,7 +62,7 @@ while True:
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
 
     # Mostrar la imagen
-    cv2.imshow("Predicción en tiempo real", frame)
+    cv2.imshow("Video", frame)
     if cv2.waitKey(1) & 0xFF == 27:  # Esc para salir
         break
 

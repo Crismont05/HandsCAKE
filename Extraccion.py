@@ -1,63 +1,95 @@
-import mediapipe as mp
 import cv2
-import os
-import pandas as pd
+import mediapipe as mp
 import numpy as np
+import pandas as pd
+import os
 
+# Carpeta donde se guardarán los CSV por clase
+output_dir = "landmarks_capturados/Validacion" # cambiar nombre de carpeta dependiendo de si son para entrenamiento o validacion
+os.makedirs(output_dir, exist_ok=True)
+
+# Clases
+clases = ["A", "E", "I", "O", "U"]
+
+# Inicializar MediaPipe Hands
 mp_hands = mp.solutions.hands
+hands = mp_hands.Hands(
+    max_num_hands=1,
+    min_detection_confidence=0.7,
+    min_tracking_confidence=0.7
+)
 mp_drawing = mp.solutions.drawing_utils
 
-def extraer_landmarks(carpeta_base, salida_csv, augmentation=True):
-    data = []
-    manos = mp_hands.Hands(
-        static_image_mode=True,
-        max_num_hands=1,
-        min_detection_confidence=0.5
-    )
+# Inicializar cámara
+cap = cv2.VideoCapture(0)
 
-    for clase in os.listdir(carpeta_base):
-        ruta_clase = os.path.join(carpeta_base, clase)
-        if not os.path.isdir(ruta_clase):
-            continue
+# Contador total y límite
+total_registros = 0
+max_registros = 600
 
-        archivos = os.listdir(ruta_clase)
-        for archivo in archivos:
-            ruta_imagen = os.path.join(ruta_clase, archivo)
-            img = cv2.imread(ruta_imagen)
-            if img is None:
-                continue
+# Variable para indicar la clase activa (modo captura automática)
+clase_activa = None
+print("Instrucciones:")
+print("Presiona A, E, I, O, U para activar captura automática para esa clase.")
+print("Presiona ESC para salir.")
+print("Presiona la misma tecla de clase para desactivar la captura automática.")
 
-            img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            resultados = manos.process(img_rgb)
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
 
-            # Inicializar fila con ceros
-            fila = [0.0] * 63
+    img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    result = hands.process(img_rgb)
 
-            # Si se detecta mano, rellenar con landmarks reales
-            if resultados.multi_hand_landmarks:
-                landmarks = resultados.multi_hand_landmarks[0]
-                fila = []
-                for punto in landmarks.landmark:
-                    fila.extend([punto.x, punto.y, punto.z])
-                # Data augmentation: pequeño ruido gaussiano
-                if augmentation:
-                    fila = np.array(fila) + np.random.normal(0, 0.01, size=(63,))
-                    fila = fila.tolist()
+    if result.multi_hand_landmarks:
+        for hand_landmarks in result.multi_hand_landmarks:
+            mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
 
-            # Agregar etiqueta
-            fila.append(clase)
-            data.append(fila)
+            # Si hay clase activa, guardar automáticamente
+            if clase_activa:
+                coords = []
+                for lm in hand_landmarks.landmark:
+                    coords.extend([lm.x, lm.y, lm.z])
 
-    # Columnas
-    columnas = [f"x{i}" for i in range(21)] + \
-               [f"y{i}" for i in range(21)] + \
-               [f"z{i}" for i in range(21)] + ["clase"]
+                if all(v == 0 for v in coords):
+                    continue  # Ignorar landmarks vacíos
 
-    df = pd.DataFrame(data, columns=columnas)
-    df.to_csv(salida_csv, index=False)
-    print(f"Dataset guardado en: {salida_csv}")
-    print(df['clase'].value_counts())
+                df_new = pd.DataFrame([coords + [clase_activa]],
+                                      columns=[f"x{i}" for i in range(21)] +
+                                              [f"y{i}" for i in range(21)] +
+                                              [f"z{i}" for i in range(21)] +
+                                              ["clase"])
+                csv_path = os.path.join(output_dir, f"landmarks_{clase_activa}.csv")
+                if os.path.exists(csv_path):
+                    df_new.to_csv(csv_path, mode='a', index=False, header=False)
+                else:
+                    df_new.to_csv(csv_path, index=False)
 
-# Ejecutar para entrenamiento y validación
-extraer_landmarks("data/Entrenamiento", "landmarks_entrenamiento.csv")
-extraer_landmarks("data/Validacion", "landmarks_validacion.csv")
+                total_registros += 1
+                cv2.putText(frame, f"Clase activa: {clase_activa} | Total: {total_registros}/{max_registros}",
+                            (10,30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
+
+                if total_registros >= max_registros:
+                    print("Se alcanzó el límite de 600 registros. Cerrando la captura.")
+                    cap.release()
+                    cv2.destroyAllWindows()
+                    exit()
+
+    # Mostrar la imagen
+    cv2.imshow("Captura automática de landmarks", frame)
+
+    key = cv2.waitKey(1) & 0xFF
+    if key == 27:  # ESC
+        break
+    elif chr(key).upper() in clases:
+        tecla = chr(key).upper()
+        if clase_activa == tecla:
+            clase_activa = None  # Desactivar captura
+            print(f"Captura automática desactivada para clase {tecla}")
+        else:
+            clase_activa = tecla  # Activar captura
+            print(f"Captura automática activada para clase {tecla}")
+
+cap.release()
+cv2.destroyAllWindows()

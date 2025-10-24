@@ -1,32 +1,38 @@
 import pandas as pd
-import tensorflow as tf
 import numpy as np
+import os
 from sklearn.preprocessing import LabelEncoder
-from sklearn.model_selection import train_test_split
 from tensorflow.keras import layers, models
 
-# Cargar los datos
-train_df = pd.read_csv("landmarks_entrenamiento.csv")
-val_df = pd.read_csv("landmarks_validacion.csv")
+# Rutas de carpetas
+base_dir = "landmarks_capturados"
+train_dir = os.path.join(base_dir, "Entrenamiento")
+val_dir   = os.path.join(base_dir, "Validacion")
+
+# Función para cargar todos los CSV de una carpeta
+def cargar_datos(carpeta):
+    dfs = []
+    for archivo in os.listdir(carpeta):
+        if archivo.endswith(".csv"):
+            df = pd.read_csv(os.path.join(carpeta, archivo))
+            dfs.append(df)
+    return pd.concat(dfs, ignore_index=True)
+
+# Cargar datasets
+train_df = cargar_datos(train_dir)
+val_df   = cargar_datos(val_dir)
 
 # Separar features y etiquetas
 X_train = train_df.drop("clase", axis=1).values
 y_train = train_df["clase"].values
-X_val = val_df.drop("clase", axis=1).values
-y_val = val_df["clase"].values
-
-# y_train, y_val son arrays de strings con etiquetas
-all_labels = np.concatenate([y_train, y_val])
-encoder = LabelEncoder()
-encoder.fit(all_labels)
-
-y_train_enc = encoder.transform(y_train)
-y_val_enc = encoder.transform(y_val)
+X_val   = val_df.drop("clase", axis=1).values
+y_val   = val_df["clase"].values
 
 # Codificar etiquetas
 encoder = LabelEncoder()
-y_train = encoder.fit_transform(y_train)
-y_val = encoder.transform(y_val)
+encoder.fit(np.concatenate([y_train, y_val]))
+y_train_enc = encoder.transform(y_train)
+y_val_enc   = encoder.transform(y_val)
 
 # Crear modelo MLP
 modelo = models.Sequential([
@@ -41,7 +47,10 @@ modelo = models.Sequential([
 modelo.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
 # Entrenar
-hist = modelo.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=50, batch_size=16)
+hist = modelo.fit(X_train, y_train_enc, validation_data=(X_val, y_val_enc),
+                  epochs=50, batch_size=16)
 
 # Guardar el modelo
 modelo.save("modelo_landmarks.keras")
+
+print("Entrenamiento finalizado y modelo guardado como 'modelo_landmarks.keras'")
