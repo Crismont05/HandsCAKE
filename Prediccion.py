@@ -6,9 +6,9 @@ from tensorflow.keras.utils import load_img, img_to_array
 from keras.models import load_model
 
 modelo = 'C:/Users/elies/Documents/Projects/HandsCAKE/Modelo_FineTuned.keras'
-peso =  'C:/Users/elies/Documents/Projects/HandsCAKE/pesos_finetuned.weights.h5'
+# peso =  'C:/Users/elies/Documents/Projects/HandsCAKE/pesos_finetuned.weights.h5'
 cnn = load_model(modelo)  #Cargamos el modelo
-cnn.load_weights(peso)  #Cargamos los pesos
+# cnn.load_weights(peso)  #Cargamos los pesos
 
 direccion = 'C:/Users/elies/Documents/Projects/HandsCAKE/data/Validacion'
 dire_img = os.listdir(direccion)
@@ -43,7 +43,7 @@ while True:
     color = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     copia = frame.copy()
     resultado = manos.process(color)
-    posiciones = []  # En esta lista vamos a almcenar las coordenadas de los puntos
+    posiciones = []  # En esta lista vamos a almacenar las coordenadas de los puntos
     #print(resultado.multi_hand_landmarks) #Si queremos ver si existe la deteccion
 
     if resultado.multi_hand_landmarks:

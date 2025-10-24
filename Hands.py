@@ -3,7 +3,7 @@ import mediapipe as mp
 import os
 
 # Configuración de la carpeta para guardar imágenes
-name = "O" #cambiar nombre en funcion de la clase que se quiera agregar
+name = "U" #cambiar nombre en funcion de la clase que se quiera agregar
 address = "C:/Users/elies/Documents/Projects/HandsCAKE/data/Validacion" #Cambiar ruta cada ve se deba agregar una nueva clase de imagen
 directory = address + '/' + name
 if not os.path.exists(directory):
@@ -18,7 +18,12 @@ cap = cv2.VideoCapture(0)
 
 # Inicializar MediaPipe Hands
 mp_hands = mp.solutions.hands
-hands = mp_hands.Hands()    #Primer parametro, FALSE para que no haga la deteccion 24/7
+hands = mp_hands.Hands(
+    static_image_mode=False,
+    max_num_hands=1,
+    min_detection_confidence=0.7,
+    min_tracking_confidence=0.7 
+)    #Primer parametro, FALSE para que no haga la deteccion 24/7
                             #Solo hara deteccion cuando hay una confianza alta
                             #Segundo parametro: numero maximo de manos
                             #Tercer parametro: confianza minima de deteccion
@@ -70,8 +75,13 @@ while True:
 
             # Redimensionar y guardar
             dedos_reg = cv2.resize(dedos_reg, (200,200), interpolation=cv2.INTER_CUBIC)
-            cv2.imwrite(f"{directory}/{name}_{cont}.jpg", dedos_reg)
-            cont += 1
+            if dedos_reg.size > 0:    
+                cv2.imwrite(f"{directory}/{name}_{cont}.jpg", dedos_reg)
+                cont += 1
+            
+            cv2.putText(frame, f"Capturadas: {cont}", (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 
+            1, (255, 255, 255), 2, cv2.LINE_AA)
+         
 
 
     # Mostrar el video
@@ -81,5 +91,6 @@ while True:
         break
 
 # Liberar recursos
+hands.close()
 cap.release()
 cv2.destroyAllWindows()
