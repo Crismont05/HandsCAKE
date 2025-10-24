@@ -25,7 +25,6 @@ filtrosconv2 = 64 #Numero de filtros para la segunda capa de convolucion
 tam_filtro1 = (3,3) #Tamaño del filtro para la primera capa de convolucion
 tam_filtro2 = (2,2) #Tamaño del filtro para la segunda capa de convolucion
 tam_pool = (2,2) #Tamaño del area de max pooling
-clases = 1 #Numero de clases o categorias que va a predecir el modelo
 lr = 0.0005 #Learning rate
 
 # Preprocesamiento de las imagenes
@@ -48,14 +47,16 @@ imagen_entreno = preprocesamiento_entrenamiento.flow_from_directory(
     class_mode='categorical'
 )
 
+clases = imagen_entreno.num_classes #Numero de clases o categorias que va a predecir el modelo
+
 # Guardamos el diccionario de clases
-clases = imagen_entreno.class_indices
-print(clases)
+clases_indices = imagen_entreno.class_indices
+print(clases_indices)
 
 import json
 with open('clases.json', 'w') as f:
-    json.dump(clases, f)
-    
+    json.dump(clases_indices, f)
+
  # Preparamos las imagenes de validacion
 imagen_validacion = preprocesamiento_validacion.flow_from_directory(
     validacion_data,

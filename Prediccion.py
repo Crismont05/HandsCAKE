@@ -40,17 +40,26 @@ while True:
     if resultado.multi_hand_landmarks:
         for mano in resultado.multi_hand_landmarks:
             dibujo.draw_landmarks(frame, mano, clase_manos.HAND_CONNECTIONS)
-            # Convertir landmarks a coordenadas en píxeles
-            alto, ancho, _ = frame.shape
-            coords = []
-            for lm in mano.landmark:
-                coords.append((int(lm.x * ancho), int(lm.y * alto)))
 
-            # Calcular caja delimitadora
-            x_min = min([x for (x, y) in coords]) - 20
-            y_min = min([y for (x, y) in coords]) - 20
-            x_max = max([x for (x, y) in coords]) + 20
-            y_max = max([y for (x, y) in coords]) + 20
+            alto, ancho, _ = frame.shape
+            coords = [(int(lm.x*ancho), int(lm.y*alto)) for lm in mano.landmark]
+
+            x_min = max(0, min([x for x,_ in coords]) - 20)
+            y_min = max(0, min([y for _,y in coords]) - 20)
+            x_max = min(ancho, max([x for x,_ in coords]) + 20)
+            y_max = min(alto, max([y for _,y in coords]) + 20)
+
+            mano_crop = frame[y_min:y_max, x_min:x_max]
+            mano_crop = cv2.resize(mano_crop, (200,200))
+            mano_crop_norm = mano_crop / 255.0
+            mano_crop_norm = np.expand_dims(mano_crop_norm, axis=0)
+
+            pred = cnn.predict(mano_crop_norm)
+            clase = np.argmax(pred)
+
+            cv2.putText(frame, f"Clase: {clase}", (x_min, y_min-10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
+
 
     cv2.imshow("Video",frame)
     k = cv2.waitKey(1)
