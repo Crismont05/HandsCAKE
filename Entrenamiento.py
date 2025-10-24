@@ -2,11 +2,12 @@
 import cv2
 import os
 import tensorflow as tf
+import matplotlib.pyplot as plt
 from tensorflow.keras.preprocessing.image import ImageDataGenerator  # preprocesamiento de imágenes
-from tensorflow.keras import optimizers
+from tensorflow.keras import optimizers, regularizers
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dropout, Flatten, Dense, Activation, Conv2D, MaxPooling2D, BatchNormalization, GlobalAveragePooling2D
-from tensorflow.keras.callbacks import ModelCheckpoint
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 from tensorflow.keras import backend as K
 
 K.clear_session()  #Limpiamos cualquier modelo que haya quedado en memoria
@@ -17,29 +18,28 @@ validacion_data = 'C:/Users/elies/Documents/Projects/HandsCAKE/data/Validacion'
 #Parametros
 iteraciones = 20 #Numero de veces que se va a entrenar el modelo
 altura, longitud = 200, 200 #Dimensiones de las imagenes
-batch_size = 16 #Numero de imagenes que se van a procesar al mismo tiempo
+batch_size = 32 #Numero de imagenes que se van a procesar al mismo tiempo
 pasos = 300 // 1 # Numero de veces que se va a actualizar el modelo por cada epoca
 pasos_validacion = 300 // 1 # Numero de veces que se va a actualizar el modelo por cada epoca de validacion
 filtrosconv1 = 32 #Numero de filtros para la primera capa de convolucion
 filtrosconv2 = 64 #Numero de filtros para la segunda capa de convolucion
-filtrosconv3 = 128 #Numero de filtros para la tercera capa de convolucion
+# filtrosconv3 = 128 #Numero de filtros para la tercera capa de convolucion
 tam_filtro1 = (3,3) #Tamaño del filtro para la primera capa de convolucion
 tam_filtro2 = (3,3) #Tamaño del filtro para la segunda capa de convolucion
-tam_filtro3 = (3,3) #Tamaño del filtro para la tercera capa de convolucion
 tam_pool = (2,2) #Tamaño del area de max pooling
-lr = 0.0005 #Learning rate
+lr = 0.0001 #Learning rate
 
 # Preprocesamiento de las imagenes
 preprocesamiento_entrenamiento = ImageDataGenerator(
-    rescale=1./255, # Normalizamos los valores de los pixeles entre 0 y 1
-    shear_range=0.2, # Aplicamos transformaciones aleatorias a las imagenes
-    zoom_range=0.2, # Genera imagenes con zoom aleatorio
-    rotation_range=20, # Rota las imagenes aleatoriamente
-    width_shift_range=0.2, # Desplaza las imagenes horizontalmente
-    height_shift_range=0.2, # Desplaza las imagenes verticalmente
-    brightness_range=[0.7,1.3], # Cambia el brillo de las imagenes
-    horizontal_flip=True, # Voltea las imagenes horizontalmente para entrenar mejor
-    fill_mode='nearest' # Rellena los pixeles que quedan vacios tras una transformacion
+    rescale=1./255, # Normalizamos los valores de los pixeles entre 0
+    rotation_range=25, # Rotacion aleatoria de las imagenes
+    width_shift_range=0.3, # Desplazamiento horizontal aleatorio
+    height_shift_range=0.3, # Desplazamiento vertical aleatorio
+    zoom_range=0.3, # Zoom aleatorio
+    brightness_range=[0.7, 1.3], # Rango de brillo
+    shear_range=0.2, # Cizallamiento aleatorio
+    horizontal_flip=True, # Volteo horizontal aleatorio
+    fill_mode='nearest' # Modo de relleno
 )
 
 preprocesamiento_validacion = ImageDataGenerator(
@@ -76,26 +76,30 @@ imagen_validacion = preprocesamiento_validacion.flow_from_directory(
 cnn = Sequential()
 
 # Primera capa
-cnn.add(Conv2D(filtrosconv1, tam_filtro1, padding='same', activation='relu', input_shape=(altura,longitud,3)))
+cnn.add(Conv2D(
+    filtrosconv1, 
+    tam_filtro1, 
+    padding='same', 
+    activation='relu', 
+    input_shape=(altura,longitud,3), 
+    kernel_regularizer=regularizers.l2(0.0001)
+    )
+)
 cnn.add(BatchNormalization())
 cnn.add(MaxPooling2D(pool_size=tam_pool))
 cnn.add(Dropout(0.25))
 
 # Segunda capa
-cnn.add(Conv2D(filtrosconv2, tam_filtro2, padding='same', activation='relu'))
-cnn.add(BatchNormalization())
-cnn.add(MaxPooling2D(pool_size=tam_pool))
-cnn.add(Dropout(0.25))
-
-# Tercera capa
-cnn.add(Conv2D(filtrosconv3, tam_filtro3, padding='same', activation='relu'))
+cnn.add(Conv2D(filtrosconv2, tam_filtro2, padding='same', activation='relu',
+               kernel_regularizer=regularizers.l2(0.0001))
+               )
 cnn.add(BatchNormalization())
 cnn.add(MaxPooling2D(pool_size=tam_pool))
 cnn.add(Dropout(0.25))
 
 # Pooling global + capas densas
 cnn.add(GlobalAveragePooling2D())
-cnn.add(Dense(256, activation='relu'))
+cnn.add(Dense(256, activation='relu', kernel_regularizer=regularizers.l2(0.0001)))
 cnn.add(Dropout(0.5))
 cnn.add(Dense(clases, activation='softmax'))
 
@@ -112,15 +116,43 @@ checkpoint = ModelCheckpoint(
     verbose=1
 )
 
-#Entrenaremos nuestra red
-cnn.fit(
+#Early stopping para evitar sobreentrenamiento
+early_stop = EarlyStopping(
+    monitor='val_loss',
+    patience=5,
+    restore_best_weights=True,
+    verbose=1
+)   
+
+# Entrenamiento
+history = cnn.fit(
     imagen_entreno, 
     steps_per_epoch=pasos, 
-    epochs= iteraciones, 
-    validation_data= imagen_validacion, 
+    epochs=iteraciones, 
+    validation_data=imagen_validacion, 
     validation_steps=pasos_validacion,
-    callbacks=[checkpoint]
+    callbacks=[checkpoint, early_stop]
 )
+
+#  Graficar accuracy y val_accuracy
+plt.figure(figsize=(8,5))
+plt.plot(history.history['accuracy'], label='Entrenamiento')
+plt.plot(history.history['val_accuracy'], label='Validación')
+plt.title('Precisión del modelo')
+plt.xlabel('Épocas')
+plt.ylabel('Accuracy')
+plt.legend()
+plt.show()
+
+#  Graficar pérdida (loss)
+plt.figure(figsize=(8,5))
+plt.plot(history.history['loss'], label='Pérdida Entrenamiento')
+plt.plot(history.history['val_loss'], label='Pérdida Validación')
+plt.title('Pérdida del modelo')
+plt.xlabel('Épocas')
+plt.ylabel('Loss')
+plt.legend()
+plt.show()
 
 #Guardamos el modelo
 cnn.save('Modelo.keras')
