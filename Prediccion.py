@@ -29,7 +29,7 @@ manos = clase_manos.Hands() #Primer parametro, FALSE para que no haga la detecci
 dibujo = mp.solutions.drawing_utils #Con este metodo dibujamos 21 puntos criticos de la mano
 
 
-while (1):
+while True:
     ret,frame = cap.read()
     color = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     copia = frame.copy()
