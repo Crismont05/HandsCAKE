@@ -3,50 +3,44 @@ import cv2
 import os
 import tensorflow as tf
 import matplotlib.pyplot as plt
-from tensorflow.keras.preprocessing.image import ImageDataGenerator  # preprocesamiento de imágenes
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras import optimizers, regularizers
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dropout, Flatten, Dense, Activation, Conv2D, MaxPooling2D, BatchNormalization, GlobalAveragePooling2D
-from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Dropout, Dense, GlobalAveragePooling2D
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
+from tensorflow.keras.applications import MobileNetV2
 from tensorflow.keras import backend as K
+import json
 
-K.clear_session()  #Limpiamos cualquier modelo que haya quedado en memoria
+K.clear_session()
 
+# Directorios de datos
 entrenamiento_data = 'C:/Users/elies/Documents/Projects/HandsCAKE/data/Entrenamiento'
 validacion_data = 'C:/Users/elies/Documents/Projects/HandsCAKE/data/Validacion'
 
-#Parametros
-iteraciones = 20 #Numero de veces que se va a entrenar el modelo
-altura, longitud = 200, 200 #Dimensiones de las imagenes
-batch_size = 32 #Numero de imagenes que se van a procesar al mismo tiempo
-pasos = 300 // 1 # Numero de veces que se va a actualizar el modelo por cada epoca
-pasos_validacion = 300 // 1 # Numero de veces que se va a actualizar el modelo por cada epoca de validacion
-filtrosconv1 = 32 #Numero de filtros para la primera capa de convolucion
-filtrosconv2 = 64 #Numero de filtros para la segunda capa de convolucion
-# filtrosconv3 = 128 #Numero de filtros para la tercera capa de convolucion
-tam_filtro1 = (3,3) #Tamaño del filtro para la primera capa de convolucion
-tam_filtro2 = (3,3) #Tamaño del filtro para la segunda capa de convolucion
-tam_pool = (2,2) #Tamaño del area de max pooling
-lr = 0.0001 #Learning rate
+# Parámetros
+iteraciones = 20
+altura, longitud = 200, 200
+batch_size = 32
+pasos = 300
+pasos_validacion = 300
+lr = 0.0001
 
-# Preprocesamiento de las imagenes
+# --- Preprocesamiento de imágenes ---
 preprocesamiento_entrenamiento = ImageDataGenerator(
-    rescale=1./255, # Normalizamos los valores de los pixeles entre 0
-    rotation_range=25, # Rotacion aleatoria de las imagenes
-    width_shift_range=0.3, # Desplazamiento horizontal aleatorio
-    height_shift_range=0.3, # Desplazamiento vertical aleatorio
-    zoom_range=0.3, # Zoom aleatorio
-    brightness_range=[0.7, 1.3], # Rango de brillo
-    shear_range=0.2, # Cizallamiento aleatorio
-    horizontal_flip=True, # Volteo horizontal aleatorio
-    fill_mode='nearest' # Modo de relleno
+    rescale=1./255,
+    rotation_range=25,
+    width_shift_range=0.3,
+    height_shift_range=0.3,
+    zoom_range=0.3,
+    brightness_range=[0.7, 1.3],
+    shear_range=0.2,
+    horizontal_flip=True,
+    fill_mode='nearest'
 )
 
-preprocesamiento_validacion = ImageDataGenerator(
-    rescale=1./255 # Normalizamos los valores de los pixeles entre 0
-)
+preprocesamiento_validacion = ImageDataGenerator(rescale=1./255)
 
-# Preparamos las imagenes de entrenamiento
 imagen_entreno = preprocesamiento_entrenamiento.flow_from_directory(
     entrenamiento_data,
     target_size=(altura, longitud),
@@ -54,17 +48,13 @@ imagen_entreno = preprocesamiento_entrenamiento.flow_from_directory(
     class_mode='categorical'
 )
 
-clases = imagen_entreno.num_classes #Numero de clases o categorias que va a predecir el modelo
-
-# Guardamos el diccionario de clases
+clases = imagen_entreno.num_classes
 clases_indices = imagen_entreno.class_indices
 print(clases_indices)
 
-import json
 with open('clases.json', 'w') as f:
     json.dump(clases_indices, f)
 
- # Preparamos las imagenes de validacion
 imagen_validacion = preprocesamiento_validacion.flow_from_directory(
     validacion_data,
     target_size=(altura, longitud),
@@ -72,87 +62,128 @@ imagen_validacion = preprocesamiento_validacion.flow_from_directory(
     class_mode='categorical'
 )
 
-# Construcción CNN
-cnn = Sequential()
-
-# Primera capa
-cnn.add(Conv2D(
-    filtrosconv1, 
-    tam_filtro1, 
-    padding='same', 
-    activation='relu', 
-    input_shape=(altura,longitud,3), 
-    kernel_regularizer=regularizers.l2(0.0001)
-    )
+# --- MODELO BASE (MobileNetV2) ---
+base_model = MobileNetV2(
+    weights='imagenet',
+    include_top=False,
+    input_shape=(altura, longitud, 3)
 )
-cnn.add(BatchNormalization())
-cnn.add(MaxPooling2D(pool_size=tam_pool))
-cnn.add(Dropout(0.25))
 
-# Segunda capa
-cnn.add(Conv2D(filtrosconv2, tam_filtro2, padding='same', activation='relu',
-               kernel_regularizer=regularizers.l2(0.0001))
-               )
-cnn.add(BatchNormalization())
-cnn.add(MaxPooling2D(pool_size=tam_pool))
-cnn.add(Dropout(0.25))
+# Fase 1: ENTRENAR SOLO CAPAS SUPERIORES
+base_model.trainable = False
 
-# Pooling global + capas densas
-cnn.add(GlobalAveragePooling2D())
-cnn.add(Dense(256, activation='relu', kernel_regularizer=regularizers.l2(0.0001)))
-cnn.add(Dropout(0.5))
-cnn.add(Dense(clases, activation='softmax'))
+x = base_model.output
+x = GlobalAveragePooling2D()(x)
+x = Dense(256, activation='relu', kernel_regularizer=regularizers.l2(0.0001))(x)
+x = Dropout(0.5)(x)
+salida = Dense(clases, activation='softmax')(x)
 
-# Compilación
-optimizar = optimizers.Adam(learning_rate=lr)
-cnn.compile(loss='categorical_crossentropy', optimizer=optimizar, metrics=['accuracy'])
+cnn = Model(inputs=base_model.input, outputs=salida)
 
-#Guarda solo pesos como checkpoint
+# Compilar
+cnn.compile(
+    optimizer=optimizers.Adam(learning_rate=lr),
+    loss='categorical_crossentropy',
+    metrics=['accuracy']
+)
+
+# Callbacks
 checkpoint = ModelCheckpoint(
-    filepath='pesos.weights.h5',
+    filepath='pesos_preentrenado.weights.h5',
     monitor='val_accuracy',
     save_best_only=True,
     save_weights_only=True,
     verbose=1
 )
 
-#Early stopping para evitar sobreentrenamiento
 early_stop = EarlyStopping(
     monitor='val_loss',
     patience=5,
     restore_best_weights=True,
     verbose=1
-)   
-
-# Entrenamiento
-history = cnn.fit(
-    imagen_entreno, 
-    steps_per_epoch=pasos, 
-    epochs=iteraciones, 
-    validation_data=imagen_validacion, 
-    validation_steps=pasos_validacion,
-    callbacks=[checkpoint, early_stop]
 )
 
-#  Graficar accuracy y val_accuracy
-plt.figure(figsize=(8,5))
-plt.plot(history.history['accuracy'], label='Entrenamiento')
-plt.plot(history.history['val_accuracy'], label='Validación')
-plt.title('Precisión del modelo')
-plt.xlabel('Épocas')
-plt.ylabel('Accuracy')
-plt.legend()
-plt.show()
+reduce_lr = ReduceLROnPlateau(
+    monitor='val_loss',
+    factor=0.3,
+    patience=3,
+    min_lr=1e-6,
+    verbose=1
+)
 
-#  Graficar pérdida (loss)
-plt.figure(figsize=(8,5))
-plt.plot(history.history['loss'], label='Pérdida Entrenamiento')
-plt.plot(history.history['val_loss'], label='Pérdida Validación')
-plt.title('Pérdida del modelo')
-plt.xlabel('Épocas')
-plt.ylabel('Loss')
-plt.legend()
-plt.show()
+print("\n===== FASE 1: ENTRENANDO SOLO CAPAS SUPERIORES =====")
+history1 = cnn.fit(
+    imagen_entreno,
+    steps_per_epoch=pasos,
+    epochs=iteraciones,
+    validation_data=imagen_validacion,
+    validation_steps=pasos_validacion,
+    callbacks=[checkpoint, early_stop, reduce_lr]
+)
 
-#Guardamos el modelo
-cnn.save('Modelo.keras')
+# --- Fase 2: FINE-TUNING AUTOMÁTICO ---
+# Descongelamos las últimas capas de MobileNetV2 (por ejemplo, las últimas 40)
+for layer in base_model.layers[-40:]:
+    layer.trainable = True
+
+# Compilamos de nuevo con tasa de aprendizaje más baja
+cnn.compile(
+    optimizer=optimizers.Adam(learning_rate=lr / 10),
+    loss='categorical_crossentropy',
+    metrics=['accuracy']
+)
+
+checkpoint_finetune = ModelCheckpoint(
+    filepath='pesos_finetuned.weights.h5',
+    monitor='val_accuracy',
+    save_best_only=True,
+    save_weights_only=True,
+    verbose=1
+)
+
+early_stop_finetune = EarlyStopping(
+    monitor='val_loss',
+    patience=5,
+    restore_best_weights=True,
+    verbose=1
+)
+
+print("\n===== FASE 2: FINE-TUNING DE LAS ÚLTIMAS CAPAS =====")
+history2 = cnn.fit(
+    imagen_entreno,
+    steps_per_epoch=pasos,
+    epochs=10,  # menos épocas para fine-tuning
+    validation_data=imagen_validacion,
+    validation_steps=pasos_validacion,
+    callbacks=[checkpoint_finetune, early_stop_finetune, reduce_lr]
+)
+
+# --- Gráficos combinados ---
+def plot_history(hist1, hist2):
+    acc = hist1.history['accuracy'] + hist2.history['accuracy']
+    val_acc = hist1.history['val_accuracy'] + hist2.history['val_accuracy']
+    loss = hist1.history['loss'] + hist2.history['loss']
+    val_loss = hist1.history['val_loss'] + hist2.history['val_loss']
+
+    plt.figure(figsize=(8, 5))
+    plt.plot(acc, label='Entrenamiento')
+    plt.plot(val_acc, label='Validación')
+    plt.title('Precisión del modelo')
+    plt.xlabel('Épocas')
+    plt.ylabel('Accuracy')
+    plt.legend()
+    plt.show()
+
+    plt.figure(figsize=(8, 5))
+    plt.plot(loss, label='Pérdida Entrenamiento')
+    plt.plot(val_loss, label='Pérdida Validación')
+    plt.title('Pérdida del modelo')
+    plt.xlabel('Épocas')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.show()
+
+plot_history(history1, history2)
+
+# Guardamos el modelo final
+cnn.save('Modelo_FineTuned.keras')

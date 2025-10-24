@@ -5,8 +5,8 @@ import numpy as np
 from tensorflow.keras.utils import load_img, img_to_array
 from keras.models import load_model
 
-modelo = 'C:/Users/elies/Documents/Projects/HandsCAKE/Modelo.keras'
-peso =  'C:/Users/elies/Documents/Projects/HandsCAKE/pesos.weights.h5'
+modelo = 'C:/Users/elies/Documents/Projects/HandsCAKE/Modelo_FineTuned.keras'
+peso =  'C:/Users/elies/Documents/Projects/HandsCAKE/pesos_finetuned.weights.h5'
 cnn = load_model(modelo)  #Cargamos el modelo
 cnn.load_weights(peso)  #Cargamos los pesos
 
