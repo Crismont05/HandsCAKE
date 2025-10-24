@@ -5,7 +5,7 @@ import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator  # preprocesamiento de imágenes
 from tensorflow.keras import optimizers
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dropout, Flatten, Dense, Activation, Conv2D, MaxPooling2D
+from tensorflow.keras.layers import Dropout, Flatten, Dense, Activation, Conv2D, MaxPooling2D, BatchNormalization, GlobalAveragePooling2D
 from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras import backend as K
 
@@ -22,8 +22,10 @@ pasos = 300 // 1 # Numero de veces que se va a actualizar el modelo por cada epo
 pasos_validacion = 300 // 1 # Numero de veces que se va a actualizar el modelo por cada epoca de validacion
 filtrosconv1 = 32 #Numero de filtros para la primera capa de convolucion
 filtrosconv2 = 64 #Numero de filtros para la segunda capa de convolucion
+filtrosconv3 = 128 #Numero de filtros para la tercera capa de convolucion
 tam_filtro1 = (3,3) #Tamaño del filtro para la primera capa de convolucion
-tam_filtro2 = (2,2) #Tamaño del filtro para la segunda capa de convolucion
+tam_filtro2 = (3,3) #Tamaño del filtro para la segunda capa de convolucion
+tam_filtro3 = (3,3) #Tamaño del filtro para la tercera capa de convolucion
 tam_pool = (2,2) #Tamaño del area de max pooling
 lr = 0.0005 #Learning rate
 
@@ -32,7 +34,12 @@ preprocesamiento_entrenamiento = ImageDataGenerator(
     rescale=1./255, # Normalizamos los valores de los pixeles entre 0 y 1
     shear_range=0.2, # Aplicamos transformaciones aleatorias a las imagenes
     zoom_range=0.2, # Genera imagenes con zoom aleatorio
-    horizontal_flip=True # Voltea las imagenes horizontalmente para entrenar mejor
+    rotation_range=20, # Rota las imagenes aleatoriamente
+    width_shift_range=0.2, # Desplaza las imagenes horizontalmente
+    height_shift_range=0.2, # Desplaza las imagenes verticalmente
+    brightness_range=[0.7,1.3], # Cambia el brillo de las imagenes
+    horizontal_flip=True, # Voltea las imagenes horizontalmente para entrenar mejor
+    fill_mode='nearest' # Rellena los pixeles que quedan vacios tras una transformacion
 )
 
 preprocesamiento_validacion = ImageDataGenerator(
@@ -65,27 +72,36 @@ imagen_validacion = preprocesamiento_validacion.flow_from_directory(
     class_mode='categorical'
 )
 
-# Creacion de red neuronal convolucional (CNN)
+# Construcción CNN
 cnn = Sequential()
-#Agregamos filtros con el fin de volver nuestra imagen muy profunda pero pequeña
-cnn.add(Conv2D(filtrosconv1, tam_filtro1, padding = 'same', input_shape=(altura,longitud,3), activation = 'relu')) #Agregamos la primera capa
-         #Es una convolucion y realizamos config
-cnn.add(MaxPooling2D(pool_size=tam_pool)) #Despues de la primera capa vamos a tener una capa de max pooling y asignamos el tamaño
 
-cnn.add(Conv2D(filtrosconv2, tam_filtro2, padding = 'same', activation='relu')) #Agregamos nueva capa
-
+# Primera capa
+cnn.add(Conv2D(filtrosconv1, tam_filtro1, padding='same', activation='relu', input_shape=(altura,longitud,3)))
+cnn.add(BatchNormalization())
 cnn.add(MaxPooling2D(pool_size=tam_pool))
+cnn.add(Dropout(0.25))
 
-#Ahora vamos a convertir esa imagen profunda a una plana, para tener 1 dimension con toda la info
-cnn.add(Flatten())  #Aplanamos la imagen
-cnn.add(Dense(256,activation='relu'))  #Asignamos 256 neuronas
-cnn.add(Dropout(0.5)) #Apagamos el 50% de las neuronas en la funcion anterior para no sobreajustar la red
-cnn.add(Dense(clases, activation='softmax'))  #Es nuestra ultima capa, es la que nos dice la probabilidad de que sea alguna de las clases
+# Segunda capa
+cnn.add(Conv2D(filtrosconv2, tam_filtro2, padding='same', activation='relu'))
+cnn.add(BatchNormalization())
+cnn.add(MaxPooling2D(pool_size=tam_pool))
+cnn.add(Dropout(0.25))
 
-#Agregamos parametros para optimizar el modelo
-#Durante el entrenamiento tenga una autoevalucion, que se optimice con Adam, y la metrica sera accuracy
-optimizar = optimizers.Adam(learning_rate= lr)
-cnn.compile(loss = 'categorical_crossentropy', optimizer= optimizar, metrics=['accuracy'])
+# Tercera capa
+cnn.add(Conv2D(filtrosconv3, tam_filtro3, padding='same', activation='relu'))
+cnn.add(BatchNormalization())
+cnn.add(MaxPooling2D(pool_size=tam_pool))
+cnn.add(Dropout(0.25))
+
+# Pooling global + capas densas
+cnn.add(GlobalAveragePooling2D())
+cnn.add(Dense(256, activation='relu'))
+cnn.add(Dropout(0.5))
+cnn.add(Dense(clases, activation='softmax'))
+
+# Compilación
+optimizar = optimizers.Adam(learning_rate=lr)
+cnn.compile(loss='categorical_crossentropy', optimizer=optimizar, metrics=['accuracy'])
 
 #Guarda solo pesos como checkpoint
 checkpoint = ModelCheckpoint(
@@ -108,4 +124,3 @@ cnn.fit(
 
 #Guardamos el modelo
 cnn.save('Modelo.keras')
-cnn.save_weights('pesos.weights.h5')
