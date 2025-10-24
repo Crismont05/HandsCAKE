@@ -3,7 +3,7 @@ import mediapipe as mp
 import os
 
 # Configuración de la carpeta para guardar imágenes
-name = "A" #cambiar nombre en funcion de la clase que se quiera agregar
+name = "E" #cambiar nombre en funcion de la clase que se quiera agregar
 address = "C:/Users/elies/Documents/Projects/HandsCAKE/data/Validacion" #Cambiar ruta cada ve se deba agregar una nueva clase de imagen
 directory = address + '/' + name
 if not os.path.exists(directory):
