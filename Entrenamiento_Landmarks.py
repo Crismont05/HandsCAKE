@@ -51,6 +51,6 @@ hist = modelo.fit(X_train, y_train_enc, validation_data=(X_val, y_val_enc),
                   epochs=50, batch_size=16)
 
 # Guardar el modelo
-modelo.save("modelo_landmarks.keras")
+modelo.save("modelo_landmarksB.keras")
 
-print("Entrenamiento finalizado y modelo guardado como 'modelo_landmarks.keras'")
+print("Entrenamiento finalizado y modelo guardado como 'modelo_landmarksB.keras'")

@@ -5,7 +5,7 @@ from keras.models import load_model
 import json
 
 # Cargar modelo de landmarks
-modelo = 'C:/Users/elies/Documents/Projects/HandsCAKE/modelo_landmarks.keras'
+modelo = 'C:/Users/elies/Documents/Projects/HandsCAKE/modelo_landmarksB.keras'
 cnn = load_model(modelo)
 
 # Cargar diccionario de clases

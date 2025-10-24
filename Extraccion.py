@@ -9,7 +9,7 @@ output_dir = "landmarks_capturados/Validacion" # cambiar nombre de carpeta depen
 os.makedirs(output_dir, exist_ok=True)
 
 # Clases
-clases = ["A", "E", "I", "O", "U"]
+clases = ["A", "B", "E", "I", "O", "U"]
 
 # Inicializar MediaPipe Hands
 mp_hands = mp.solutions.hands
@@ -30,7 +30,7 @@ max_registros = 600
 # Variable para indicar la clase activa (modo captura automática)
 clase_activa = None
 print("Instrucciones:")
-print("Presiona A, E, I, O, U para activar captura automática para esa clase.")
+print("Presiona A, B, E, I, O, U para activar captura automática para esa clase.")
 print("Presiona ESC para salir.")
 print("Presiona la misma tecla de clase para desactivar la captura automática.")
 
