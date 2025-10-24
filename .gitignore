@@ -26,6 +26,7 @@ share/python-wheels/
 *.egg
 MANIFEST
 venv/
+data/
 __pycache__/
 *.pyc
 *.dll
