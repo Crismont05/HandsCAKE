@@ -5,14 +5,23 @@ import numpy as np
 from tensorflow.keras.utils import load_img, img_to_array
 from keras.models import load_model
 
-modelo = 'C:/Users/elies/Documents/Projects/HandsCAKE/Modelo.h5'
-peso =  'C:/Users/elies/Documents/Projects/HandsCAKE/pesos.h5'
+modelo = 'C:/Users/elies/Documents/Projects/HandsCAKE/Modelo.keras'
+peso =  'C:/Users/elies/Documents/Projects/HandsCAKE/pesos.weights.h5'
 cnn = load_model(modelo)  #Cargamos el modelo
 cnn.load_weights(peso)  #Cargamos los pesos
 
 direccion = 'C:/Users/elies/Documents/Projects/HandsCAKE/data/Validacion'
 dire_img = os.listdir(direccion)
 print("Nombres: ", dire_img)
+
+import json
+
+# Cargar el diccionario de clases
+with open('clases.json', 'r') as f:
+    clases_dict = json.load(f)  # {'A': 0, 'E': 1, 'I': 2, 'O': 3, 'U': 4}
+
+# Invertir para que podamos hacer indice -> nombre
+indice_a_nombre = {v: k for k, v in clases_dict.items()}
 
 #Leemos la camara
 cap = cv2.VideoCapture(0)
@@ -56,8 +65,9 @@ while True:
 
             pred = cnn.predict(mano_crop_norm)
             clase = np.argmax(pred)
+            nombre_clase = indice_a_nombre[clase]
 
-            cv2.putText(frame, f"Clase: {clase}", (x_min, y_min-10),
+            cv2.putText(frame, f"Clase: {nombre_clase}", (x_min, y_min-10),
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
 
 
