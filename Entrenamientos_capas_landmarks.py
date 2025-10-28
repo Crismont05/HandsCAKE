@@ -182,6 +182,8 @@ def plot_history(hist1, hist2):
 import matplotlib.pyplot as plt
 plot_history(history1, history2)
 
+cnn.load_weights('pesos_finetuned_landmarks.weights.h5')
+
 # Guardamos el modelo final
 cnn.save("Modelo_Landmarks_FineTuned.keras")
 
