@@ -44,7 +44,7 @@ while cap.isOpened():
     if not ret:
         break
 
-    frame = cv2.flip(frame, 1) # Voltear para efecto espejo
+    #frame = cv2.flip(frame, 1) # Voltear para efecto espejo
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     results = hands.process(frame_rgb)
     

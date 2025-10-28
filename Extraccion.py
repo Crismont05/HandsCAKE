@@ -5,7 +5,7 @@ import pandas as pd
 import os
 
 # --- Configuración ---
-DATA_DIR = 'C:\ImportantProyects\DataSetSignos' # ruta donde esta el dataset
+DATA_DIR = 'C:\ImportantProyects\Entrenamiento_y_Validaciones\Validaciones' # ruta donde esta el dataset
 CSV_FILE = 'datos_entrenamiento.csv'
 hands_model = mp.solutions.hands
 hands = hands_model.Hands(static_image_mode=True, max_num_hands=1, min_detection_confidence=0.5)

@@ -2,8 +2,7 @@ import cv2
 import mediapipe as mp
 import os
 
-# Inicializar contador 
-cont = 0
+# Inicializar contador bcont = 0
 
 # Captura de video
 cap = cv2.VideoCapture(0)
