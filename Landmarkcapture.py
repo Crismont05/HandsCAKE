@@ -5,7 +5,7 @@ import pandas as pd
 import os
 
 # Carpeta donde se guardarán los CSV por clase
-output_dir = "C:\ImportantProyects\Landmarks_capturados\Entrenamientos"# Clases
+output_dir = "C:/Users/elies/Documents/Projects/HandsCAKE/data/Entrenamiento" 
 clases = ["A", "E", "I", "O", "U","B","C","D","F","G","H","J","K","L","M","N","P","Q","R","S","T","V","W","X","Y","Z",]
 
 # Inicializar MediaPipe Hands
@@ -22,12 +22,12 @@ cap = cv2.VideoCapture(0)
 
 # Contador total y límite
 total_registros = 0
-max_registros = 600
+max_registros = 1200
 
 # Variable para indicar la clase activa (modo captura automática)
 clase_activa = None
 print("Instrucciones:")
-print("Presiona A, E, I, O, U para activar captura automática para esa clase.")
+print("Presiona una letra para activar captura automática para esa clase.")
 print("Presiona ESC para salir.")
 print("Presiona la misma tecla de clase para desactivar la captura automática.")
 
@@ -66,15 +66,17 @@ while True:
                 total_registros += 1
                 cv2.putText(frame, f"Clase activa: {clase_activa} | Total: {total_registros}/{max_registros}",
                             (10,30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
+                if total_registros >= max_registros/2:
+                    cv2.putText(frame, "Cambio de mano recomendado", (10,70), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
 
                 if total_registros >= max_registros:
-                    print("Se alcanzó el límite de 600 registros. Cerrando la captura.")
+                    print(f"Se alcanzó el límite de {max_registros} registros. Cerrando la captura.")
                     cap.release()
                     cv2.destroyAllWindows()
                     exit()
 
     # Mostrar la imagen
-    cv2.imshow("Captura automática de landmarks", frame)
+    cv2.imshow("Captura automatica de landmarks", frame)
 
     key = cv2.waitKey(1) & 0xFF
     if key == 27:  # ESC
@@ -83,10 +85,10 @@ while True:
         tecla = chr(key).upper()
         if clase_activa == tecla:
             clase_activa = None  # Desactivar captura
-            print(f"Captura automática desactivada para clase {tecla}")
+            print(f"Captura automatica desactivada para clase {tecla}")
         else:
             clase_activa = tecla  # Activar captura
-            print(f"Captura automática activada para clase {tecla}")
+            print(f"Captura automatica activada para clase {tecla}")
 
 cap.release()
 cv2.destroyAllWindows()
