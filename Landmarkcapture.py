@@ -5,7 +5,7 @@ import pandas as pd
 import os
 
 # Carpeta donde se guardarán los CSV por clase
-output_dir = "C:/Users/elies/Documents/Projects/HandsCAKE/data/Entrenamiento" 
+output_dir = "C:/Users/elies/Documents/Projects/HandsCAKE/data/Entrenamiento/Landmarks" 
 clases = ["A", "E", "I", "O", "U","B","C","D","F","G","H","J","K","L","M","N","P","Q","R","S","T","V","W","X","Y","Z",]
 
 # Inicializar MediaPipe Hands
