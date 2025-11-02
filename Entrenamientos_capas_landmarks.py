@@ -10,9 +10,9 @@ from tensorflow.keras import backend as K
 K.clear_session()
 
 # Rutas de carpetas
-base_dir = "C:\ImportantProyects\Landmarks_capturados"
-train_dir = os.path.join(base_dir, "C:\ImportantProyects\Landmarks_capturados\Entrenamientos")
-val_dir = os.path.join(base_dir, "C:\ImportantProyects\Landmarks_capturados\Validaciones")
+base_dir = "C:/Users/elies/Documents/Projects/HandsCAKE/data/Landmarks"
+train_dir = os.path.join(base_dir, "C:/Users/elies/Documents/Projects/HandsCAKE/data/Landmarks/Entrenamiento")
+val_dir = os.path.join(base_dir, "C:/Users/elies/Documents/Projects/HandsCAKE/data/Landmarks/Validacion")
 input_shape = 63 # 21 puntos * 3 coordenadas (x, y, z)
 
 # --- Funciones de Carga y Preprocesamiento ---
