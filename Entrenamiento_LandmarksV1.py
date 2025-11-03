@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import tensorflow as tf
 import os
 import json # Necesario para guardar las clases
 from sklearn.preprocessing import LabelEncoder
@@ -24,6 +25,15 @@ def cargar_datos(carpeta):
             df = pd.read_csv(os.path.join(carpeta, archivo))
             dfs.append(df)
     return pd.concat(dfs, ignore_index=True)
+
+TEST_SIZE = 0.2
+BATCH_SIZE = 64
+EPOCHS = 200
+SEED = 42
+
+np.random.seed(SEED)
+tf.random.set_seed(SEED)
+
 
 # Cargar datasets
 train_df = cargar_datos(train_dir)
@@ -51,6 +61,7 @@ clases_indices = {
 with open('clases_landmarks.json', 'w') as f:
     json.dump(clases_indices, f) # La línea 53 ahora debería funcionar
     
+x_train
 
 # --- Callbacks ---
 # Usaremos los mismos callbacks de tu código de imágenes
